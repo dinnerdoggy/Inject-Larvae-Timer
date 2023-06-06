@@ -1,0 +1,68 @@
+import simpleaudio as sa
+import threading
+import keyboard
+import time
+
+def play_sound(file_path):
+    try:
+        wave_obj = sa.WaveObject.from_wave_file(file_path)
+        play_obj = wave_obj.play()
+        return play_obj
+    except Exception as e:
+        print(f"An error occurred while playing the sound: {str(e)}")
+        return None
+
+# Example usage
+file_path = 'C:/Users/Owner/Desktop/Inject Timer/Reminder Tone.wav'
+play_obj = None
+running = False
+hotkey_listener_suspended = False
+
+def toggle_playback():
+    global play_obj, running
+    if running:
+        if play_obj is not None:
+            play_obj.stop()
+            play_obj = None
+        running = False
+        print("Playback stopped")
+    else:
+        play_obj = play_sound(file_path)
+        running = True
+        print("Playback started")
+
+def toggle_hotkey_listener():
+    global hotkey_listener_suspended
+    hotkey_listener_suspended = not hotkey_listener_suspended
+    if hotkey_listener_suspended:
+        print("Hotkey listener suspended")
+    else:
+        print("Hotkey listener resumed")
+
+# Register the hotkey for playback toggle
+keyboard.add_hotkey('F12', toggle_playback)
+
+# Register a separate hotkey to suspend/resume the hotkey listener
+keyboard.add_hotkey('F11', toggle_hotkey_listener)
+
+def playback_loop():
+    global play_obj
+    while True:
+        if running and play_obj is not None and not play_obj.is_playing():
+            play_obj = play_sound(file_path)
+        if not hotkey_listener_suspended:
+            start_time = time.time()
+            while time.time() - start_time < 31.22:
+                time.sleep(0.01)
+
+# Start the playback loop in a separate thread
+thread = threading.Thread(target=playback_loop)
+thread.daemon = True
+thread.start()
+
+# Keep the main thread running
+while True:
+    time.sleep(0.1)
+
+# Cleanup: Remove the hotkey listeners
+keyboard.unhook_all()
