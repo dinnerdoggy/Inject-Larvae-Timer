@@ -17,18 +17,21 @@ file_path = 'C:/Users/Owner/Desktop/Inject Timer/Reminder Tone.wav'
 play_obj = None
 running = False
 hotkey_listener_suspended = False
+first_playback_time = None
 
 def toggle_playback():
-    global play_obj, running
+    global play_obj, running, first_playback_time
     if running:
         if play_obj is not None:
             play_obj.stop()
             play_obj = None
         running = False
+        first_playback_time = None
         print("Playback stopped")
     else:
         play_obj = play_sound(file_path)
         running = True
+        first_playback_time = time.time()
         print("Playback started")
 
 def toggle_hotkey_listener():
@@ -39,26 +42,30 @@ def toggle_hotkey_listener():
     else:
         print("Hotkey listener resumed")
 
-# Register the hotkey for playback toggle
-keyboard.add_hotkey('F12', toggle_playback)
-
-# Register a separate hotkey to suspend/resume the hotkey listener
-keyboard.add_hotkey('F11', toggle_hotkey_listener)
-
 def playback_loop():
-    global play_obj
+    global play_obj, running, first_playback_time
     while True:
         if running and play_obj is not None and not play_obj.is_playing():
             play_obj = play_sound(file_path)
+            first_playback_time = time.time()
         if not hotkey_listener_suspended:
-            start_time = time.time()
-            while time.time() - start_time < 31.22:
-                time.sleep(0.01)
+            if first_playback_time is not None:
+                elapsed_time = time.time() - first_playback_time
+                sleep_time = max(0, 31.22 - elapsed_time)
+                time.sleep(sleep_time)
+            else:
+                time.sleep(0.1)
 
 # Start the playback loop in a separate thread
 thread = threading.Thread(target=playback_loop)
 thread.daemon = True
 thread.start()
+
+# Register the hotkey for playback toggle
+keyboard.add_hotkey('F12', toggle_playback)
+
+# Register a separate hotkey to suspend/resume the hotkey listener
+keyboard.add_hotkey('F11', toggle_hotkey_listener)
 
 # Keep the main thread running
 while True:
